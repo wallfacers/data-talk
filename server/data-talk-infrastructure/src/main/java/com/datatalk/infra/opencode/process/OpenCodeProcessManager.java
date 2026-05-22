@@ -89,6 +89,7 @@ public class OpenCodeProcessManager implements SmartLifecycle {
 
     private void doStart() throws Exception {
         binaryResolver.ensureNodeModules();
+        binaryResolver.ensureModelsCatalog();
         Path opencodeCwd = opencodeWorkingDir(homeDir);
         Path binary = resolveBinary();
         if (binary == null) {

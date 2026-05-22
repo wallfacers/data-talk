@@ -27,6 +27,9 @@ public class OpenCodeBinaryResolver {
     private static final String CURRENT_FILE = ".current";
     static final String DEPS_RESOURCE = "opencode/opencode-deps.tar.gz";
     private static final String DEPS_MARKER = ".datatalk-deps-installed";
+    static final String MODELS_RESOURCE = "opencode/models.json.gz";
+    // Below this size the on-disk models.json is treated as missing/corrupt and reseeded.
+    private static final long MIN_VALID_MODELS_BYTES = 1024;
 
     /**
      * Resolve local binary from the base directory.
@@ -243,6 +246,57 @@ public class OpenCodeBinaryResolver {
             log.info("Extracted bundled NPM deps to {}", configDir);
         } catch (Exception e) {
             log.warn("Failed to extract bundled NPM deps: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Seeds OpenCode's models.dev catalog cache so provider/model resolution works on a
+     * fresh, offline first launch. OpenCode resolves every provider's model schema from a
+     * catalog it fetches from models.dev at runtime and caches at {@code <cache>/opencode/models.json}.
+     * On a packaged install whose first launch can't reach models.dev, that file never
+     * appears and OpenCode raises {@code ProviderModelNotFoundError} for any model. We drop a
+     * bundled snapshot into place so resolution succeeds without network. OpenCode still
+     * refreshes the file from models.dev on its own TTL when a network is available, so we
+     * only seed when the on-disk copy is missing or too small to be valid.
+     */
+    public void ensureModelsCatalog() {
+        ensureModelsCatalogAt(openCodeCacheDir());
+    }
+
+    /**
+     * OpenCode resolves its cache directory with a pure XDG implementation on every platform
+     * ({@code XDG_CACHE_HOME} or {@code ~/.cache}), so the same computation is correct on
+     * Windows, macOS, and Linux.
+     */
+    static Path openCodeCacheDir() {
+        String xdg = System.getenv("XDG_CACHE_HOME");
+        Path base = (xdg != null && !xdg.isBlank())
+            ? Paths.get(xdg)
+            : Paths.get(System.getProperty("user.home"), ".cache");
+        return base.resolve("opencode");
+    }
+
+    void ensureModelsCatalogAt(Path cacheDir) {
+        Path modelsJson = cacheDir.resolve("models.json");
+        try {
+            if (Files.isRegularFile(modelsJson) && Files.size(modelsJson) >= MIN_VALID_MODELS_BYTES) {
+                return;
+            }
+            try (InputStream in = getClass().getClassLoader().getResourceAsStream(MODELS_RESOURCE)) {
+                if (in == null) {
+                    log.info("No bundled models.dev catalog on classpath, skipping seed");
+                    return;
+                }
+                Files.createDirectories(cacheDir);
+                Path tmp = modelsJson.resolveSibling("models.json.dt-seed.tmp");
+                try (GZIPInputStream gzip = new GZIPInputStream(in)) {
+                    Files.copy(gzip, tmp, StandardCopyOption.REPLACE_EXISTING);
+                }
+                Files.move(tmp, modelsJson, StandardCopyOption.REPLACE_EXISTING);
+                log.info("Seeded bundled models.dev catalog to {}", modelsJson);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to seed models.dev catalog: {}", e.getMessage());
         }
     }
 

@@ -80,6 +80,50 @@ class OpenCodeBinaryResolverDepsTest {
          .hasMessageContaining("escapes target directory");
     }
 
+    @Test
+    void ensureModelsCatalog_seedsWhenAbsent() throws IOException {
+        OpenCodeBinaryResolver resolver = new OpenCodeBinaryResolver();
+        Path cacheDir = tempDir.resolve("cache/opencode");
+        Path modelsJson = cacheDir.resolve("models.json");
+
+        // Bundled models.json.gz lives on the classpath (committed resource) — should be seeded.
+        resolver.ensureModelsCatalogAt(cacheDir);
+
+        assertThat(Files.isRegularFile(modelsJson)).isTrue();
+        assertThat(Files.size(modelsJson)).isGreaterThan(100_000L);
+        assertThat(Files.readString(modelsJson)).contains("alibaba-coding-plan-cn");
+    }
+
+    @Test
+    void ensureModelsCatalog_skipsWhenPresentAndValid() throws IOException {
+        OpenCodeBinaryResolver resolver = new OpenCodeBinaryResolver();
+        Path cacheDir = tempDir.resolve("cache/opencode");
+        Path modelsJson = cacheDir.resolve("models.json");
+        Files.createDirectories(cacheDir);
+        // A network-fetched copy already exists (>1KB) — must not be clobbered by the seed.
+        String sentinel = "{\"network-fetched\":true}".repeat(100);
+        Files.writeString(modelsJson, sentinel);
+
+        resolver.ensureModelsCatalogAt(cacheDir);
+
+        assertThat(Files.readString(modelsJson)).isEqualTo(sentinel);
+    }
+
+    @Test
+    void ensureModelsCatalog_reseedsWhenPresentButTooSmall() throws IOException {
+        OpenCodeBinaryResolver resolver = new OpenCodeBinaryResolver();
+        Path cacheDir = tempDir.resolve("cache/opencode");
+        Path modelsJson = cacheDir.resolve("models.json");
+        Files.createDirectories(cacheDir);
+        // A truncated/corrupt copy (<1KB) — should be replaced by the bundled snapshot.
+        Files.writeString(modelsJson, "{}");
+
+        resolver.ensureModelsCatalogAt(cacheDir);
+
+        assertThat(Files.size(modelsJson)).isGreaterThan(100_000L);
+        assertThat(Files.readString(modelsJson)).contains("alibaba-coding-plan-cn");
+    }
+
     private byte[] buildTestTarGz() throws IOException {
         // Build a simple tar archive with: node_modules/test-pkg/package.json
         ByteArrayOutputStream baos = new ByteArrayOutputStream();

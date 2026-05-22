@@ -14,7 +14,7 @@ DataTalk 运行时缺陷的集中记录。所有 BUG 详情请进单文件查看
 
 | ID | Title | Status | Priority | Owner |
 |----|-------|--------|----------|-------|
-| [BUG-0088](BUG-0088-empty-ai-model-prefs-causes-providermodelnotfounderror.md) | ai_model_prefs 表为空导致 OpenCode 启动报 ProviderModelNotFoundError（全新安装无默认 provider） | open | P1 | — |
+| [BUG-0088](BUG-0088-empty-ai-model-prefs-causes-providermodelnotfounderror.md) | 打包版全新安装首启未拉到 models.dev 目录，OpenCode 对任意 provider 报 ProviderModelNotFoundError（真因更正；原"ai_model_prefs 为空"误判）。已实现内置快照+启动注入，待 Windows 验证 | open | P1 | — |
 | [BUG-0084](BUG-0084-bezel-incremental-hot-update-unwired.md) | Bezel 增量热更新链路未接通（客户端忽略 changes + Differ 丢 chartSemantics/query），靠整页重载兜底 | fixed | P2 | bezel-compiler-redesign |
 | [BUG-0079](BUG-0079-attach-file-on-unpersisted-draft-session-500-fk.md) | 开始页草稿会话未持久化时上传附件触发 500（uploaded_file 外键失败），chip 显示 Internal Server Error | fixed | P1 | — (pending) |
 
