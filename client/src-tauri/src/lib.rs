@@ -170,6 +170,8 @@ fn stop_script(app: AppHandle, run_id: String) -> Result<(), String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    simple_logger::SimpleLogger::new().init().unwrap();
+    log::info!("DataTalk starting...");
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())

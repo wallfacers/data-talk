@@ -67,6 +67,12 @@ fn ensure_started(app: &AppHandle) -> Result<(), String> {
     }
 
     let resource_dir = app.path().resource_dir().map_err(|e| e.to_string())?;
+
+    // Tauri's resource_dir() may return a Windows extended-length path prefixed with
+    // `\\?\`.  Java's internal jimage classloader cannot handle that prefix and crashes
+    // with "jimage file name is null".  Strip it so all child paths are plain Win32 paths.
+    let resource_dir = strip_extended_path_prefix(resource_dir);
+
     let backend_dir = resource_dir.join("backend");
     let jar = backend_dir.join("app.jar");
     let java = backend_dir
@@ -119,7 +125,11 @@ fn ensure_started(app: &AppHandle) -> Result<(), String> {
         .arg(format!("--server.port={}", port))
         .stdout(Stdio::from(stdout_file))
         .stderr(Stdio::from(stderr_file))
-        .current_dir(&work_dir);
+        .current_dir(&work_dir)
+        .env_remove("CLASSPATH")
+        .env_remove("JAVA_TOOL_OPTIONS")
+        .env_remove("_JAVA_OPTIONS")
+        .env_remove("JAVA_HOME");
     if opencode_bin.exists() {
         log::info!("Using bundled OpenCode binary: {opencode_bin:?}");
         command.env("DATATALK_OPENCODE_SERVE_BINARY_PATH", &opencode_bin);
@@ -230,4 +240,26 @@ pub fn get_backend_url(app: AppHandle) -> String {
         return "http://127.0.0.1:8080".to_string();
     }
     format!("http://127.0.0.1:{}", port)
+}
+
+/// Strip the Windows extended-length path prefix (`\\?\`) from a path.
+///
+/// Tauri's `resource_dir()` returns paths with this prefix on Windows when the
+/// install directory has a long absolute path.  Java's internal jimage classloader
+/// treats the prefix as part of the file name and fails to locate the runtime
+/// modules, crashing with "jimage file name is null".  Stripping the prefix
+/// produces a normal Win32 path that both Windows APIs and Java understand.
+fn strip_extended_path_prefix(p: std::path::PathBuf) -> std::path::PathBuf {
+    let path_str = p.to_string_lossy();
+    // `\\?\` is the Win32 extended-length prefix (4 chars: two backslashes + ? + backslash).
+    // `\\?\UNC\` is the UNC variant (8 chars).
+    if let Some(rest) = path_str.strip_prefix(r"\\?\") {
+        // UNC path: \\?\UNC\server\share\... → \\server\share\...
+        if let Some(unc_rest) = rest.strip_prefix("UNC\\") {
+            return std::path::PathBuf::from(format!(r"\\{}", unc_rest));
+        }
+        // Normal path: \\?\D:\... → D:\...
+        return std::path::PathBuf::from(rest);
+    }
+    p
 }
