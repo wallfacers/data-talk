@@ -78,7 +78,8 @@ fn ensure_started(app: &AppHandle) -> Result<(), String> {
     let java = backend_dir
         .join("runtime")
         .join("bin")
-        .join(if cfg!(windows) { "java.exe" } else { "java" });
+        // javaw.exe is the windowless variant — avoids a CMD console popup
+        .join(if cfg!(windows) { "javaw.exe" } else { "java" });
 
     if !jar.exists() || !java.exists() {
         return Err(format!(
@@ -221,8 +222,13 @@ pub fn stop(app: &AppHandle) {
         }
         #[cfg(windows)]
         {
+            use std::os::windows::process::CommandExt;
+            // CREATE_NO_WINDOW: taskkill is a console app; spawning it from the
+            // GUI process without this flag flashes a console window on exit.
+            const CREATE_NO_WINDOW: u32 = 0x0800_0000;
             let _ = Command::new("taskkill")
                 .args(["/PID", &pid.to_string(), "/T", "/F"])
+                .creation_flags(CREATE_NO_WINDOW)
                 .output();
         }
         std::thread::sleep(Duration::from_millis(1500));

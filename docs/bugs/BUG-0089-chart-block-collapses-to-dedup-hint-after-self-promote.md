@@ -54,23 +54,23 @@ BUG-0064 的去重 `findMatchedArtifact`（`client/src/features/chat/components/
 
 ## Fix
 
-1. **贯通 `producedBy`**：
-   - `event-reducer.ts` `Artifact` 类型新增 `producedBy?: string`。
-   - `use-channel.ts` `ontology.updated` → `upsertArtifact` 映射 `producedBy: d.patch?.producedBy`（后端 `buildPatch` 已下发）。
-   - `use-session-history.ts` 快照 `ArtifactDto` + 映射补 `producedBy`（后端 `ArtifactDto` 已含）。
-2. **去重区分来源**（`chart-block.tsx`）：
-   - 新增常量 `REST_PRODUCED_BY = 'rest:chart'`（对齐后端 `ChartArtifactService.REST_PRODUCED_BY`）。
-   - `findMatchedArtifact` 优先返回工具产物（非 rest）；rest 产物仅作降级匹配。
-   - 新增 `dedupedByToolCard = !!matched && matched.producedBy !== REST_PRODUCED_BY`。
-   - 折叠分支与提升按钮隐藏改用 `dedupedByToolCard`；按钮文案 / `setActive` 仍用 `matched`，使 REST 自提升保留图表并把按钮翻为"已在工作台"。
+**初版（已被结构性方案取代）**：曾用 `producedBy` 区分工具产物 vs REST 自提升，仅工具产物才触发塌缩。该方案随后被下面的"单一展示面"重构整体替换。
+
+**最终方案 —— 统一为单一展示面（用户决策：保留围栏块）**：从根上消除两条聊天内图表渲染路径，塌缩逻辑随之删除，BUG-0089 不再可能发生：
+
+1. `artifact-created.tsx`：`datatalk_render_chart` 工具卡片**不再内联渲染图表画布**，退化为"紧凑行 + 在工作台查看(眼睛)"。chart 与 table 产物表现一致。
+2. `chart-block.tsx`：`ChartBlock` 成为聊天内**唯一**图表画布——画布恒显，删除 `dedupedByToolCard` / `REST_PRODUCED_BY` / "已在上方图表产物中展示" 塌缩分支。`findMatchedArtifact` 简化为按 origin 匹配，仅用于把提升按钮翻为"已在工作台"并在点击时聚焦已开 tab（避免重复提升）。
+3. 回退初版的 `producedBy` 贯通（`event-reducer.ts` / `use-channel.ts` / `use-session-history.ts`），因塌缩删除后该字段不再被消费。
+4. Prompt：`skill:charts-and-dashboards` + `AGENTS.md` 改为"聊天内图表唯一走围栏块；`datatalk_render_chart` 不内联出图,仅用于持久化工件"。
 
 ## Verification
 
-- `chart-block.test.tsx` 新增 BUG-0089 case：ontology store 内存在 `producedBy='rest:chart'` 且同 origin 的 chart 工件时，`ChartBlock` **不**塌缩、画布保留、按钮显示"已在工作台"。
-- 回归 BUG-0064 case：`producedBy='call_render_chart_01'`（工具产物）时仍正确塌缩为 `data-dedup-skipped` 提示。
-- `chart-block.test.tsx`（13）+ `use-channel.test.ts`（33）全过；`tsc --noEmit` 零错误。
+- `chart-block.test.tsx`：single-surface case —— 存在同 origin chart 工件时画布仍渲染、无塌缩提示、按钮显示"已在工作台"且点击不触发 `promoteChartToStage`。
+- `artifact-created.test.tsx`：重写为断言**不**渲染 chart 画布、仅紧凑行 + 眼睛。
+- 后端 `AgentsTemplateContractTest.chartsAndDashboardsSkillDeclaresSingleInChatChartSurface` 校验新文案（17/17 通过）。
+- 前端 chart-block / artifact-created / markdown / use-channel 套件全过；`tsc --noEmit` 零错误。
 
 ## Notes
 
-- 与 [BUG-0064](BUG-0064-chart-artifact-rendered-twice-when-llm-also-embeds-echarts-block.md) 同模块同函数，`regression: true`。BUG-0064 的去重假设"任何同 origin 的 chart 工件都对应上方一张卡片"在手动提升场景下不成立。
-- 后端契约未改动；`producedBy` 字段后端早已下发，仅前端 ingest 漏接。
+- 与 [BUG-0064](BUG-0064-chart-artifact-rendered-twice-when-llm-also-embeds-echarts-block.md) 同模块同函数，`regression: true`。两者根因同源——"两条聊天内渲染路径并存"。最终通过让 `ArtifactCreated` 不出图、`ChartBlock` 独占展示，从结构上消除双路径（也顺带消除空围栏外的另一类困惑），而非继续靠运行时去重。
+- 后端契约未改 chart 工件本身；仅 `AgentsTemplateContractTest` 一处契约文案随 SKILL.md 更新。
