@@ -144,6 +144,7 @@ describe('ChartBlock', () => {
                 id: 'art-dedup',
                 version: 1,
                 kind: 'chart',
+                producedBy: 'call_render_chart_01',
                 originMessageId: 'm',
                 originPartId: 'p0',
               },
@@ -174,6 +175,54 @@ describe('ChartBlock', () => {
     // Expand / copy stay available on ChartBlock as secondary affordances.
     expect(screen.getByRole('button', { name: /放大图表/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /复制 JSON/ })).toBeInTheDocument()
+  })
+
+  it('BUG-0089: does NOT collapse to the dedup hint when the matching artifact was promoted via REST (no tool card above)', () => {
+    // Clicking "open in workbench" on a standalone ChartBlock creates a chart
+    // artifact via the REST endpoint (producedBy = "rest:chart"), carrying this
+    // block's own originMessageId/originPartId. Before the fix, findMatchedArtifact
+    // matched it and the block collapsed to "已在上方图表产物中展示" — but there is
+    // NO ArtifactCreated card above, so the chart simply vanished. The REST
+    // artifact must only flip the button to "already in workbench".
+    useOntologyStore.setState({
+      artifactsBySession: new Map([
+        [
+          's1',
+          new Map([
+            [
+              'art-self-promoted',
+              {
+                id: 'art-self-promoted',
+                version: 1,
+                kind: 'chart',
+                producedBy: 'rest:chart',
+                originMessageId: 'm',
+                originPartId: 'p0',
+              },
+            ],
+          ]),
+        ],
+      ]),
+    } as any)
+
+    render(
+      <ChartBlock
+        json={JSON.stringify(MIN_OPTION)}
+        streaming={false}
+        messageId="m"
+        partId="p0"
+        blockIndex={0}
+      />,
+    )
+
+    // Chart stays visible; no collapse hint.
+    expect(screen.getByTestId('chart-canvas-host')).toBeInTheDocument()
+    expect(screen.queryByTestId('chart-deduped-hint')).not.toBeInTheDocument()
+    // Promote button stays, flipped to "already in workbench" and re-focuses on click.
+    const openButton = screen.getByRole('button', { name: /已在工作台/ })
+    expect(openButton).toBeInTheDocument()
+    fireEvent.click(openButton)
+    expect(promoteChartToStage).not.toHaveBeenCalled()
   })
 
   it('shows an error toast and resets the promote button when promotion fails', async () => {

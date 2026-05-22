@@ -27,7 +27,21 @@ type ParsedChartOption =
 type PromoteState = 'idle' | 'loading'
 const MAX_CHART_JSON_BYTES = 256 * 1024
 const MAX_CHART_JSON_LABEL = '256 KB'
-const EMPTY_ARTIFACTS: Map<string, { id: string; kind: string; originMessageId?: string; originPartId?: string }> = new Map()
+
+// Backend ChartArtifactService.REST_PRODUCED_BY: chart artifacts created via
+// the manual "promote to workbench" REST endpoint (no datatalk_render_chart
+// tool call). These have NO ArtifactCreated tool card above them in the chat,
+// so they must not trigger the "已在上方图表产物中展示" dedup collapse.
+const REST_PRODUCED_BY = 'rest:chart'
+
+type MatchableArtifact = {
+  id: string
+  kind: string
+  producedBy?: string
+  originMessageId?: string
+  originPartId?: string
+}
+const EMPTY_ARTIFACTS: Map<string, MatchableArtifact> = new Map()
 
 function utf8ByteLength(text: string): number {
   return new TextEncoder().encode(text).byteLength
@@ -57,18 +71,27 @@ function parseChartOption(json: string): ParsedChartOption {
 }
 
 function findMatchedArtifact(
-  artifacts: Map<string, { id: string; kind: string; originMessageId?: string; originPartId?: string }>,
+  artifacts: Map<string, MatchableArtifact>,
   messageId: string,
   partId?: string,
 ) {
   const expectedPartId = partId ?? ''
+  let restMatch: MatchableArtifact | null = null
   for (const artifact of artifacts.values()) {
     if (artifact.kind !== 'chart') continue
     if ((artifact.originMessageId ?? '') !== messageId) continue
     if ((artifact.originPartId ?? '') !== expectedPartId) continue
+    // A tool-produced artifact (datatalk_render_chart) is rendered by an
+    // ArtifactCreated card above and takes precedence for dedup. A REST
+    // self-promote artifact only flips the promote button to "already in
+    // workbench" — it never collapses this block.
+    if (artifact.producedBy === REST_PRODUCED_BY) {
+      restMatch = artifact
+      continue
+    }
     return artifact
   }
-  return null
+  return restMatch
 }
 
 function ChartSkeleton({ label }: { label: string }) {
@@ -162,9 +185,13 @@ export const ChartBlock = memo(function ChartBlock({
     sessionId ? state.artifactsBySession.get(sessionId) ?? EMPTY_ARTIFACTS : EMPTY_ARTIFACTS,
   )
   const matched = useMemo(
-    () => findMatchedArtifact(artifacts as Map<string, any>, messageId, partId),
+    () => findMatchedArtifact(artifacts as Map<string, MatchableArtifact>, messageId, partId),
     [artifacts, messageId, partId],
   )
+  // Only a tool-produced artifact (rendered by an ArtifactCreated card above)
+  // justifies collapsing this block to the dedup hint. A REST self-promote
+  // leaves nothing above, so the chart must stay visible.
+  const dedupedByToolCard = !!matched && matched.producedBy !== REST_PRODUCED_BY
 
   const lastValidOptionRef = useRef<Record<string, unknown> | null>(null)
   const parsed = useMemo(() => parseChartOption(json), [json])
@@ -236,7 +263,7 @@ export const ChartBlock = memo(function ChartBlock({
       <div className="flex items-center justify-between border-b border-[var(--dt-border-subtle)] bg-[var(--dt-bg-subtle)] px-3 py-1.5">
         <span className="font-mono text-[13px] leading-[18px] text-[var(--dt-text-muted)]">{t('chart.label')}</span>
         <div className="flex items-center gap-1 text-[13px] leading-[18px]">
-          {!matched && (
+          {!dedupedByToolCard && (
             <Tooltip>
               <TooltipTrigger
                 render={
@@ -290,7 +317,7 @@ export const ChartBlock = memo(function ChartBlock({
           </Tooltip>
         </div>
       </div>
-      {matched ? (
+      {dedupedByToolCard ? (
         <div
           data-testid="chart-deduped-hint"
           data-dedup-skipped="true"
