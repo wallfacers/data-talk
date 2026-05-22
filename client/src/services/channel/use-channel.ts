@@ -414,7 +414,6 @@ export function buildEventSink(
           id: d.id,
           version: d.patch?.version ?? 1,
           kind: d.patch?.kind ?? 'table',
-          producedBy: d.patch?.producedBy,
           supersedesId: d.patch?.supersedesId,
           payload: d.patch,
           originMessageId: d.patch?.originMessageId,

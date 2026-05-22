@@ -71,6 +71,7 @@ LLM 同一回复里既调用 `datatalk_render_chart` 生成 chart artifact，又
 
 ## Notes
 
+- **后续结构性收口（见 [BUG-0089](BUG-0089-chart-block-collapses-to-dedup-hint-after-self-promote.md)）**：本 BUG 当初的"运行时去重"修法（`matched` 时塌缩 `ChartBlock`）在手动提升场景下引发 BUG-0089 回归。最终改为让 `ArtifactCreated` 对 chart 不再出图、`ChartBlock` 独占聊天内展示，从根上消除双路径，去重塌缩逻辑被删除。
 - 与 [BUG-0010](BUG-0010-chart-axis-name-clipped-in-chat-bubble.md) 同模块（chat + markdown + chart）但根因不同，前者是单图布局，本 BUG 是双路径并发。
 - 关联 prompt 改造：本仓库 `agent-context-priming` change 已落地 Pre-Action Exploration Protocol，prompt 层修改建议放进后续小 change，不阻塞当前 PR archive。
 

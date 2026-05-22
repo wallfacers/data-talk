@@ -82,89 +82,34 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('ArtifactCreated — inline chart preview', () => {
-  it('renders ChartRenderer inline when chart artifact is in ontology store', () => {
+describe('ArtifactCreated — compact reference (no inline chart canvas)', () => {
+  it('does NOT render a chart canvas even when the chart artifact is in the store', () => {
+    // ChartBlock (markdown fenced block) is the single in-chat chart surface.
+    // This tool card is a compact reference only — it must never paint a second
+    // canvas, regardless of whether the artifact / echartsOption is available.
     useOntologyStore.setState({
       artifactsBySession: new Map([
         ['sess-1', new Map([['art-1', CHART_ARTIFACT]])],
-      ]),
-    } as any)
-
-    render(<ArtifactCreated part={makePart() as any} descriptor={DESCRIPTOR as any} />)
-
-    expect(screen.getByTestId('chart-renderer-mock')).toBeInTheDocument()
-  })
-
-  it('does NOT render ChartRenderer when artifact is absent from store', () => {
-    // store is empty (default beforeEach)
-    render(<ArtifactCreated part={makePart() as any} descriptor={DESCRIPTOR as any} />)
-
-    expect(screen.queryByTestId('chart-renderer-mock')).not.toBeInTheDocument()
-  })
-
-  it('does NOT render ChartRenderer for non-chart kind (table)', () => {
-    useOntologyStore.setState({
-      artifactsBySession: new Map([
-        ['sess-1', new Map([['art-1', { ...CHART_ARTIFACT, kind: 'table' }]])],
-      ]),
-    } as any)
-
-    const part = makePart()
-    ;(part as any).tool = 'datatalk_build_table'
-
-    render(<ArtifactCreated part={part as any} descriptor={DESCRIPTOR as any} />)
-
-    expect(screen.queryByTestId('chart-renderer-mock')).not.toBeInTheDocument()
-  })
-
-  it('does NOT render ChartRenderer when artifact payload has no echartsOption', () => {
-    useOntologyStore.setState({
-      artifactsBySession: new Map([
-        ['sess-1', new Map([['art-1', { ...CHART_ARTIFACT, payload: { kind: 'chart' } }]])],
       ]),
     } as any)
 
     render(<ArtifactCreated part={makePart() as any} descriptor={DESCRIPTOR as any} />)
 
     expect(screen.queryByTestId('chart-renderer-mock')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('artifact-chart-canvas-host')).not.toBeInTheDocument()
   })
 
-  it('passes echartsOption to ChartRenderer', () => {
-    useOntologyStore.setState({
-      artifactsBySession: new Map([
-        ['sess-1', new Map([['art-1', CHART_ARTIFACT]])],
-      ]),
-    } as any)
-
+  it('renders the compact tool row with the title', () => {
     render(<ArtifactCreated part={makePart() as any} descriptor={DESCRIPTOR as any} />)
 
-    const renderer = screen.getByTestId('chart-renderer-mock')
-    expect(JSON.parse(renderer.getAttribute('data-option')!)).toEqual(CHART_OPTION)
-  })
-
-  it('renders the inline chart inside a shrinkable full-width wrapper', () => {
-    useOntologyStore.setState({
-      artifactsBySession: new Map([
-        ['sess-1', new Map([['art-1', CHART_ARTIFACT]])],
-      ]),
-    } as any)
-
-    render(<ArtifactCreated part={makePart() as any} descriptor={DESCRIPTOR as any} />)
-
-    expect(screen.getByTestId('chart-renderer-mock').parentElement).toHaveClass('w-full', 'min-w-0', 'max-w-full')
-  })
-
-  it('still renders the tool row (BasicTool) alongside the inline chart', () => {
-    useOntologyStore.setState({
-      artifactsBySession: new Map([
-        ['sess-1', new Map([['art-1', CHART_ARTIFACT]])],
-      ]),
-    } as any)
-
-    render(<ArtifactCreated part={makePart() as any} descriptor={DESCRIPTOR as any} />)
-
-    expect(screen.getByTestId('chart-renderer-mock')).toBeInTheDocument()
     // BasicTool renders the tool title (TextShimmer duplicates the text node, so use getAllByText)
     expect(screen.getAllByText(/chart artifact/).length).toBeGreaterThan(0)
+  })
+
+  it('renders the "view in stage" eye button', () => {
+    render(<ArtifactCreated part={makePart() as any} descriptor={DESCRIPTOR as any} />)
+
+    // aria-label maps through translateMessage; unmapped key falls back to the key string.
+    expect(screen.getByRole('button', { name: 'chat.openStage' })).toBeInTheDocument()
   })
 })

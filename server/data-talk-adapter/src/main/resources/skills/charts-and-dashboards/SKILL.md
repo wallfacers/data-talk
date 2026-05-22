@@ -22,23 +22,20 @@ description: Use when the user asks for a chart, KPI, trend, report, or multi-wi
 
 - **Default path — inline fenced code block**: emit a fenced code block with language tag `chart`, whose body is the **complete ECharts option JSON, with literal data values inlined into `series`/`xAxis` etc.** This is the cheapest path and is preferred for one-off charts inside the conversation stream.
 - **Linking to a SQL artifact**: when the chart is derived from a prior `datatalk_execute_sql` artifact, you may open the fence as `chart:<artifactId>` (e.g. the opening fence becomes ```` ```chart:art-abc123 ````). The `:<artifactId>` suffix is **provenance metadata only** — it is forwarded as `sourceArtifactId` when the user promotes the chart to the workbench. **It does NOT feed data into the chart and does NOT auto-render the rowset.** You still MUST write the full ECharts option (including the actual data points read from the SQL result) into the fence body, exactly as in the default path. The suffix is an annotation on top of a complete chart, never a replacement for it.
-- **Saved chart artifact via `datatalk_render_chart`**: call this tool **only** when a persistent chart artifact is required (sharing, embedding into a dashboard widget that needs an artifact reference, or supersede chains). The tool emits its own artifact link semantics — see `[[artifacts-output]]` for `supersedes` chain rules.
+- **Saved chart artifact via `datatalk_render_chart`**: call this tool **only** when a persistent chart artifact is required (sharing, embedding into a dashboard widget that needs an artifact reference, or supersede chains). The tool card **no longer renders the chart inline in chat** — it is a compact reference row with an "在工作台查看" (eye) affordance. If the user should also *see* the chart in the conversation, emit a fenced block (below) in addition. See `[[artifacts-output]]` for `supersedes` chain rules.
 
 ### The fenced body is NEVER empty
 
 The frontend `ChartBlock` parses the fence body with `JSON.parse`. An empty body — e.g. ```` ```chart:art-abc123 ```` immediately followed by the closing fence — produces `JSON.parse('')` → `Unexpected end of JSON input`, and the chart renders as an error card. The `:<artifactId>` suffix never substitutes for the JSON body. Whenever you open a `chart` / `chart:<artifactId>` fence, the body MUST be a complete, parseable ECharts option object. If you intend to render purely from a saved artifact instead, call `datatalk_render_chart` and emit NO fenced block at all — do not leave an empty fence behind.
 
-### Single chart, single render — never emit the same chart twice
+### Single in-chat surface — charts render only in the fenced block
 
-Pick **exactly one** rendering path per chart. The frontend has two independent renderers (the `artifact-created` tool card from `datatalk_render_chart` and the `ChartBlock` from a markdown ```` ```chart ```` / ```` ```echarts ```` fenced block), and they do **not** deduplicate against each other. Emitting both for the same chart produces two visible copies in the same chat bubble.
+In chat, a chart renders in exactly one place: the markdown ```` ```chart ```` / ```` ```echarts ```` fenced block (`ChartBlock`). `datatalk_render_chart` no longer paints a chart in chat — its tool card is a compact reference with an eye ("在工作台查看") only. There is no longer a double-render hazard, but the rules below keep output clean:
 
-Hard rules:
-
-- After calling `datatalk_render_chart`, do **not** also embed the same chart as a ```` ```chart ```` / ```` ```echarts ```` fenced block in the same reply. The artifact is the single source of truth; the tool-card render already shows it.
-- After emitting a ```` ```chart ```` / ```` ```echarts ```` fenced block, do **not** also call `datatalk_render_chart` with the same option in the same reply.
-- ```` ```echarts ```` is treated as an alias of ```` ```chart ```` and is bound by the same rules.
-
-When the user later asks for an action that needs an artifact reference (promote-to-stage, supersede, embed in dashboard), `ChartBlock` exposes the promote button; switch to `datatalk_render_chart` only when the user actually asks for the persistent representation.
+- To **show** a chart in the conversation, ALWAYS emit a ```` ```chart ```` / ```` ```echarts ```` fenced block with the full ECharts option in the body. This is the single display surface.
+- Call `datatalk_render_chart` **only** when a persistent artifact is required (sharing, supersede chains, or a dashboard widget that needs an artifact reference). It will not display the chart inline; pair it with a fenced block if the user should also see it.
+- ```` ```echarts ```` is an alias of ```` ```chart ```` and is bound by the same rules.
+- `ChartBlock` exposes promote-to-workbench / expand / copy. The chart becomes a persistent artifact on demand via its "打开到工作台" button — so for most charts you never need `datatalk_render_chart` at all.
 
 ## Dashboards
 
@@ -46,7 +43,7 @@ A dashboard is a persistent multi-widget layout backed by server-side JSON stora
 
 ### When to use dashboards vs single charts
 
-- Single chart → use the inline ```` ```chart ```` fenced block, or `datatalk_render_chart` when a saved artifact is needed.
+- Single chart → use the inline ```` ```chart ```` fenced block (the single in-chat display surface); `datatalk_render_chart` only when a saved artifact is needed (it does not render inline).
 - Multi-widget composed view (2+ visuals, filters, or text tiles) → use a dashboard.
 
 ### Creating a dashboard

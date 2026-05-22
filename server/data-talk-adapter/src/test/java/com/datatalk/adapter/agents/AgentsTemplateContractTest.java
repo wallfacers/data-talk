@@ -205,15 +205,17 @@ class AgentsTemplateContractTest {
     }
 
     @Test
-    void chartsAndDashboardsSkillForbidsDuplicateChartEmission() throws IOException {
-        // BUG-0064: charts-and-dashboards must instruct the AI to pick exactly
-        // one rendering path per chart — never emit both datatalk_render_chart
-        // and a ```chart``` / ```echarts``` fenced block for the same chart.
+    void chartsAndDashboardsSkillDeclaresSingleInChatChartSurface() throws IOException {
+        // BUG-0064/0089: charts render in exactly one place in chat — the
+        // markdown ```chart``` / ```echarts``` fenced block (ChartBlock).
+        // datatalk_render_chart no longer paints a chart inline; the skill must
+        // make the fenced block the single in-chat display surface.
         String skill = loadSkillMd("charts-and-dashboards");
         assertThat(skill)
-            .as("skills/charts-and-dashboards/SKILL.md must forbid emitting the same chart twice (render_chart + fenced block)")
+            .as("skills/charts-and-dashboards/SKILL.md must declare the fenced block as the single in-chat chart surface")
             .contains("datatalk_render_chart")
-            .containsIgnoringCase("never emit the same chart twice")
+            .containsIgnoringCase("single in-chat surface")
+            .containsIgnoringCase("no longer")
             .contains("echarts");
     }
 }
