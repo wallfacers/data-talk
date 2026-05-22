@@ -2,9 +2,10 @@
 // path); dev builds run the backend separately, so silence dead-code there.
 #![cfg_attr(debug_assertions, allow(dead_code))]
 
+use std::fs::File;
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
-use std::process::{Child, Command};
+use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
@@ -103,12 +104,21 @@ fn ensure_started(app: &AppHandle) -> Result<(), String> {
         .join("opencode")
         .join(if cfg!(windows) { "opencode.exe" } else { "opencode" });
 
-    log::info!("Spawning backend: {java:?} -jar {jar:?} --server.port={port} (cwd {work_dir:?})");
+    // Redirect backend stdout/stderr to a log file for diagnostics.
+    let log_dir = work_dir.join("logs");
+    std::fs::create_dir_all(&log_dir).map_err(|e| format!("Failed to create log dir: {e}"))?;
+    let log_path = log_dir.join("backend.log");
+    let stdout_file = File::create(&log_path).map_err(|e| format!("Failed to create log file: {e}"))?;
+    let stderr_file = stdout_file.try_clone().map_err(|e| format!("Failed to clone log file: {e}"))?;
+
+    log::info!("Spawning backend: {java:?} -jar {jar:?} --server.port={port} (cwd {work_dir:?}, log {log_path:?})");
     let mut command = Command::new(&java);
     command
         .arg("-jar")
         .arg(&jar)
         .arg(format!("--server.port={}", port))
+        .stdout(Stdio::from(stdout_file))
+        .stderr(Stdio::from(stderr_file))
         .current_dir(&work_dir);
     if opencode_bin.exists() {
         log::info!("Using bundled OpenCode binary: {opencode_bin:?}");
@@ -120,6 +130,7 @@ fn ensure_started(app: &AppHandle) -> Result<(), String> {
         .spawn()
         .map_err(|e| format!("Failed to spawn backend: {e}"))?;
 
+    let pid = child.id();
     app.state::<BackendProcess>()
         .0
         .lock()
@@ -131,11 +142,34 @@ fn ensure_started(app: &AppHandle) -> Result<(), String> {
         if health_ok(port) {
             return Ok(());
         }
+        // Check if the backend process has already exited (crashed).
+        {
+            let state = app.state::<BackendProcess>();
+            let mut guard = state.0.lock().unwrap();
+            if let Some(ref mut child) = *guard {
+                match child.try_wait() {
+                    Ok(Some(status)) => {
+                        let code = status.code().map_or("N/A".to_string(), |c| c.to_string());
+                        return Err(format!(
+                            "Backend process (pid {pid}) exited prematurely with code {code}. \
+                             Check log at {}",
+                            log_path.display()
+                        ));
+                    }
+                    Ok(None) => {} // still running
+                    Err(e) => {
+                        log::warn!("Failed to check backend process status: {e}");
+                    }
+                }
+            }
+        }
         std::thread::sleep(Duration::from_millis(500));
     }
     Err(format!(
-        "Backend did not become healthy within {}s",
-        STARTUP_TIMEOUT.as_secs()
+        "Backend did not become healthy within {}s (pid {pid}). \
+         Check log at {}",
+        STARTUP_TIMEOUT.as_secs(),
+        log_path.display()
     ))
 }
 
