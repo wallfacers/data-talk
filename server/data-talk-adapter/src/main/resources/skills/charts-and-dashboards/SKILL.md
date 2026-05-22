@@ -20,9 +20,13 @@ description: Use when the user asks for a chart, KPI, trend, report, or multi-wi
 
 ## Charts
 
-- **Default path — inline fenced code block**: emit a fenced code block with language tag `chart`, whose body is the ECharts option JSON. This is the cheapest path and is preferred for one-off charts inside the conversation stream.
-- **Linking to a SQL artifact**: when the chart is derived from a prior `datatalk_execute_sql` artifact, open the fence as `chart:<artifactId>` (e.g. the opening fence becomes ```` ```chart:art-abc123 ````). The frontend uses this prefix to bind the chart to its source rowset and to enable refresh/drill semantics.
+- **Default path — inline fenced code block**: emit a fenced code block with language tag `chart`, whose body is the **complete ECharts option JSON, with literal data values inlined into `series`/`xAxis` etc.** This is the cheapest path and is preferred for one-off charts inside the conversation stream.
+- **Linking to a SQL artifact**: when the chart is derived from a prior `datatalk_execute_sql` artifact, you may open the fence as `chart:<artifactId>` (e.g. the opening fence becomes ```` ```chart:art-abc123 ````). The `:<artifactId>` suffix is **provenance metadata only** — it is forwarded as `sourceArtifactId` when the user promotes the chart to the workbench. **It does NOT feed data into the chart and does NOT auto-render the rowset.** You still MUST write the full ECharts option (including the actual data points read from the SQL result) into the fence body, exactly as in the default path. The suffix is an annotation on top of a complete chart, never a replacement for it.
 - **Saved chart artifact via `datatalk_render_chart`**: call this tool **only** when a persistent chart artifact is required (sharing, embedding into a dashboard widget that needs an artifact reference, or supersede chains). The tool emits its own artifact link semantics — see `[[artifacts-output]]` for `supersedes` chain rules.
+
+### The fenced body is NEVER empty
+
+The frontend `ChartBlock` parses the fence body with `JSON.parse`. An empty body — e.g. ```` ```chart:art-abc123 ```` immediately followed by the closing fence — produces `JSON.parse('')` → `Unexpected end of JSON input`, and the chart renders as an error card. The `:<artifactId>` suffix never substitutes for the JSON body. Whenever you open a `chart` / `chart:<artifactId>` fence, the body MUST be a complete, parseable ECharts option object. If you intend to render purely from a saved artifact instead, call `datatalk_render_chart` and emit NO fenced block at all — do not leave an empty fence behind.
 
 ### Single chart, single render — never emit the same chart twice
 
@@ -121,7 +125,7 @@ A dashboard can contain `chart` widgets whose `options.echartsOption` is the sam
 ## Recommended workflow
 
 1. Decide the shape: single chart (inline fenced block) vs multi-widget (dashboard).
-2. For a single chart, prefer the inline ```` ```chart ```` block; switch to `chart:<artifactId>` when bound to a SQL artifact, and reach for `datatalk_render_chart` only when a saved artifact is required.
+2. For a single chart, prefer the inline ```` ```chart ```` block with the full ECharts option in the body; add the `:<artifactId>` suffix (still with the full body) only to record SQL provenance, and reach for `datatalk_render_chart` only when a saved artifact is required. Never emit an empty fence body.
 3. For a multi-widget view, draft the full dashboard JSON (schemaVersion 1, P1 widget types only) and create it via `datatalk_ui_exec` with `object=dashboard`, `action=create`, `params.dashboardJson`.
 4. For follow-up tweaks, use `datatalk_ui_patch` with the freshest version; on `version_conflict` re-read and retry per `[[concurrency-contract]]`.
 5. Keep widget ids stable and human-readable so subsequent `matchKey` patches stay legible.
