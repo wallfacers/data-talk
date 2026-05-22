@@ -1,7 +1,4 @@
-const BASE = (() => {
-  const env = (import.meta as any).env?.VITE_API_BASE_URL
-  return typeof env === 'string' && env.length > 0 ? env.replace(/\/$/, '') : ''
-})()
+import { getApiBaseUrl } from '../api-prefix'
 
 export interface ExportDataRequest {
   columns: string[]
@@ -11,7 +8,7 @@ export interface ExportDataRequest {
 }
 
 export async function exportDataFile(req: ExportDataRequest): Promise<Blob> {
-  const res = await fetch(`${BASE}/api/exports/data`, {
+  const res = await fetch(`${getApiBaseUrl()}/api/exports/data`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(req),

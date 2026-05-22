@@ -7,6 +7,7 @@ import com.microsoft.playwright.Playwright;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -14,30 +15,32 @@ import org.springframework.stereotype.Component;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
-/**
- * 启动期异步预热 Playwright headless Chromium，提供共享 Browser 实例。
- *
- * <p>首次启动会触发 Playwright SDK 下载 Chromium 浏览器到本地缓存（~300MB），可能耗时
- * 数十秒到几分钟。该过程不阻塞 Spring 启动；前端通过 {@link ReportSystemStatus#chromiumReady()}
- * 与 system-status REST 端点判定是否可点击 PDF/MD 导出按钮。
- */
 @Component
 public class ChromiumLifecycle {
 
     private static final Logger log = LoggerFactory.getLogger(ChromiumLifecycle.class);
 
     private final ReportSystemStatus systemStatus;
+    private final boolean chromiumEnabled;
     private final ReentrantLock lock = new ReentrantLock();
 
     private volatile Playwright playwright;
     private volatile Browser browser;
 
-    public ChromiumLifecycle(ReportSystemStatus systemStatus) {
+    public ChromiumLifecycle(
+            ReportSystemStatus systemStatus,
+            @Value("${datatalk.report.chromium.enabled:false}") boolean chromiumEnabled) {
         this.systemStatus = systemStatus;
+        this.chromiumEnabled = chromiumEnabled;
     }
 
     @EventListener(ApplicationReadyEvent.class)
     public void startupAsync() {
+        if (!chromiumEnabled) {
+            log.info("Chromium warmup disabled (datatalk.report.chromium.enabled=false)");
+            systemStatus.setChromiumReady(false);
+            return;
+        }
         Thread.ofVirtual().name("chromium-warmup").start(this::ensureBrowser);
     }
 

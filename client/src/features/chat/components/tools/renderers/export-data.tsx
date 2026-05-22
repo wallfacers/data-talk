@@ -6,6 +6,7 @@ import { translateMessage, type LanguageOption, type MessageKey } from '@/i18n/m
 import { DownloadIcon } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { downloadFromUrl, formatFileSize, inferFilename } from '@/services/tauri/file-download'
+import { getApiBaseUrl } from '@/services/api-prefix'
 
 type ExportOutput = {
   exportId?: string
@@ -15,12 +16,6 @@ type ExportOutput = {
   format?: string
   status?: string
   warnings?: string[]
-}
-
-function getApiBaseUrl(): string {
-  const env = (import.meta as any).env?.VITE_API_BASE_URL
-  if (typeof env === 'string' && env.length > 0) return env.replace(/\/$/, '')
-  return ''
 }
 
 function resolveDownloadUrl(url: string | undefined): string | null {

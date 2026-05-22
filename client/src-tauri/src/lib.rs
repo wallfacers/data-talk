@@ -176,11 +176,13 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .manage(RunningPids(Mutex::new(HashMap::new())))
         .manage(backend::BackendProcess(Mutex::new(None)))
+        .manage(backend::BackendPort(Mutex::new(0)))
         .invoke_handler(tauri::generate_handler![
             greet,
             detect_script_env,
             run_script,
-            stop_script
+            stop_script,
+            backend::get_backend_url
         ])
         .setup(|app| {
             // Dev runs the backend separately; just reveal the window.

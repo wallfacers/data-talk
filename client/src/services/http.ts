@@ -1,6 +1,6 @@
-import ky, { type BeforeErrorHook } from 'ky'
+import ky, { type BeforeErrorHook, type KyInstance } from 'ky'
 import { HTTPError } from 'ky'
-import { API_PREFIX } from './api-prefix'
+import { API_PREFIX, getApiBaseUrl } from './api-prefix'
 import { getCurrentLanguage } from '@/stores/ui-settings-store'
 
 const errorNormalizer: BeforeErrorHook = async (error) => {
@@ -25,17 +25,36 @@ const errorNormalizer: BeforeErrorHook = async (error) => {
   return error
 }
 
-export const http = ky.create({
-  prefixUrl: `${import.meta.env.VITE_API_BASE_URL ?? ''}${API_PREFIX}`,
-  timeout: 30_000,
-  retry: { limit: 1 },
-  hooks: {
-    beforeRequest: [
-      (request) => {
-        request.headers.set('Accept-Language', getCurrentLanguage())
-      },
-    ],
-    beforeError: [errorNormalizer],
+function createHttp(): KyInstance {
+  return ky.create({
+    prefixUrl: `${getApiBaseUrl()}${API_PREFIX}`,
+    timeout: 30_000,
+    retry: { limit: 1 },
+    hooks: {
+      beforeRequest: [
+        (request) => {
+          request.headers.set('Accept-Language', getCurrentLanguage())
+        },
+      ],
+      beforeError: [errorNormalizer],
+    },
+  })
+}
+
+let currentHttp = createHttp()
+
+/** Recreate the HTTP client after the API base URL has been updated. */
+export function reinitializeHttp() {
+  currentHttp = createHttp()
+}
+
+/**
+ * Shared ky HTTP client. Uses a Proxy so callers always hit the latest instance
+ * even after `reinitializeHttp()` replaces it during bootstrap.
+ */
+export const http: KyInstance = new Proxy({} as KyInstance, {
+  get(_, prop, receiver) {
+    return Reflect.get(currentHttp, prop, receiver)
   },
 })
 

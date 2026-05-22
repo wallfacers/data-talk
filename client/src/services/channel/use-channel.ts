@@ -15,6 +15,7 @@ import { useQuestionStore } from '@/stores/question-store'
 import type { QuestionInfo } from '@/services/api/question'
 import { getClientHandler } from '@/features/actions/registry'
 import { normalizeError, showErrorToast } from '@/services/http-error'
+import { getApiBaseUrl } from '@/services/api-prefix'
 import { toast } from 'sonner'
 import { translateMessage } from '@/i18n/messages'
 import { getCurrentLanguage } from '@/stores/ui-settings-store'
@@ -30,12 +31,6 @@ type ActionResultErrorInfo = {
   message: string
   retriable?: boolean
   details?: unknown
-}
-
-function getApiBaseUrl(): string {
-  const env = (import.meta as any).env?.VITE_API_BASE_URL
-  if (typeof env === 'string' && env.length > 0) return env.replace(/\/$/, '')
-  return ''
 }
 
 function getPendingUserText(sessionId: string, pendingUserId: string | null): string | null {

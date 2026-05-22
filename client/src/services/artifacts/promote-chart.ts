@@ -1,7 +1,4 @@
-const BASE = (() => {
-  const env = (import.meta as any).env?.VITE_API_BASE_URL
-  return typeof env === 'string' && env.length > 0 ? env.replace(/\/$/, '') : ''
-})()
+import { getApiBaseUrl } from '../api-prefix'
 
 export type PromoteChartArgs = {
   sessionId: string
@@ -24,7 +21,7 @@ export async function promoteChartToStage(args: PromoteChartArgs): Promise<Promo
   if (args.originMessageId != null) body.originMessageId = args.originMessageId
   if (args.originPartId != null) body.originPartId = args.originPartId
 
-  const res = await fetch(`${BASE}/api/sessions/${args.sessionId}/artifacts/chart`, {
+  const res = await fetch(`${getApiBaseUrl()}/api/sessions/${args.sessionId}/artifacts/chart`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
