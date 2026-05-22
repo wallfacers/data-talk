@@ -22,7 +22,7 @@ type ChartBlockProps = {
 
 type ParsedChartOption =
   | { ok: true; option: Record<string, unknown> }
-  | { ok: false; error: string; code?: 'too_large' }
+  | { ok: false; error: string; code?: 'too_large' | 'empty' }
 
 type PromoteState = 'idle' | 'loading'
 const MAX_CHART_JSON_BYTES = 256 * 1024
@@ -34,6 +34,10 @@ function utf8ByteLength(text: string): number {
 }
 
 function parseChartOption(json: string): ParsedChartOption {
+  if (json.trim() === '') {
+    return { ok: false, code: 'empty', error: 'chart code block body is empty' }
+  }
+
   if (utf8ByteLength(json) > MAX_CHART_JSON_BYTES) {
     return { ok: false, code: 'too_large', error: `chart option JSON exceeds ${MAX_CHART_JSON_LABEL}` }
   }
@@ -93,9 +97,11 @@ function ChartError({ json, title, message }: { json: string; title: string; mes
       <div className="border-b border-[var(--dt-status-danger)] bg-[var(--dt-status-danger-surface)] px-3 py-2 text-[13px] leading-[18px] text-[var(--dt-status-danger)]">
         {title}: {message}
       </div>
-      <pre className="max-h-[220px] overflow-auto bg-[var(--dt-bg-panel)] px-3 py-2 font-mono text-[13px] leading-[18px] text-[var(--dt-text-muted)]">
-        {json}
-      </pre>
+      {json.trim() !== '' && (
+        <pre className="max-h-[220px] overflow-auto bg-[var(--dt-bg-panel)] px-3 py-2 font-mono text-[13px] leading-[18px] text-[var(--dt-text-muted)]">
+          {json}
+        </pre>
+      )}
     </div>
   )
 }
@@ -215,6 +221,9 @@ export const ChartBlock = memo(function ChartBlock({
   }
 
   if (!option) {
+    if (!parsed.ok && parsed.code === 'empty') {
+      return <ChartError json="" title={t('chart.emptyTitle')} message={t('chart.emptyBody')} />
+    }
     return <ChartError json={json} title={t('chart.jsonError')} message={parsed.ok ? t('chart.invalidOption') : parsed.error} />
   }
 

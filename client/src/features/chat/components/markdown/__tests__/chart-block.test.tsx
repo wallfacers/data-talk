@@ -71,6 +71,22 @@ describe('ChartBlock', () => {
     expect(screen.getByTestId('chart-error')).toBeInTheDocument()
   })
 
+  it('shows a friendly empty-body message instead of a raw JSON.parse error when the fence body is empty', () => {
+    render(<ChartBlock json={''} streaming={false} messageId="m" blockIndex={0} />)
+
+    const error = screen.getByTestId('chart-error')
+    expect(error).toHaveTextContent('图表内容为空')
+    expect(error).not.toHaveTextContent('JSON')
+    // No raw <pre> dump when there is nothing to show.
+    expect(error.querySelector('pre')).toBeNull()
+  })
+
+  it('renders skeleton (not empty error) when the body is still empty during streaming', () => {
+    render(<ChartBlock json={'   '} streaming={true} messageId="m" blockIndex={0} />)
+    expect(screen.getByTestId('chart-skeleton')).toBeInTheDocument()
+    expect(screen.queryByTestId('chart-error')).not.toBeInTheDocument()
+  })
+
   it('renders error state when the chart renderer throws', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 
