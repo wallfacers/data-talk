@@ -5,6 +5,7 @@ import { TanStackRouterVite } from '@tanstack/router-vite-plugin'
 import path from 'node:path'
 
 const host = process.env.TAURI_DEV_HOST
+const vitePort = parseInt(process.env.VITE_PORT || '0')
 
 export default defineConfig({
   plugins: [
@@ -20,8 +21,8 @@ export default defineConfig({
   },
   clearScreen: false,
   server: {
-    port: 1420,
-    strictPort: true,
+    port: vitePort || 1420,
+    strictPort: !!process.env.VITE_PORT,
     host: host || '0.0.0.0',
     hmr: host ? { protocol: 'ws', host, port: 1421 } : undefined,
     watch: { ignored: ['**/src-tauri/**'] },
