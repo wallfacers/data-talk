@@ -5,6 +5,7 @@ export type Artifact = {
   version: number
   kind: 'table' | 'chart'
   sessionId?: string
+  producedBy?: string
   supersedesId?: string
   supersedesVersion?: number
   pinned?: boolean

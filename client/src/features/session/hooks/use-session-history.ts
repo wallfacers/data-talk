@@ -54,6 +54,7 @@ type ArtifactDto = {
   version: number
   kind: 'table' | 'chart'
   sessionId?: string
+  producedBy?: string
   supersedesId?: string
   supersedesVersion?: number
   pinned?: boolean
@@ -95,6 +96,7 @@ export function useSessionHistory(sessionId: string | null) {
       id: a.id,
       version: a.version,
       kind: a.kind,
+      producedBy: a.producedBy,
       supersedesId: a.supersedesId,
       supersedesVersion: a.supersedesVersion,
       pinned: a.pinned,
