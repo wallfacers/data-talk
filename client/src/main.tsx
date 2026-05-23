@@ -14,6 +14,7 @@ import { useSessionStore } from '@/stores/session-store'
 import { coordinator } from '@/features/stage/persistence/stage-persistence-bootstrap'
 import { setRuntimeApiBaseUrl } from '@/services/api-prefix'
 import { reinitializeHttp } from '@/services/http'
+import { AppGate } from '@/features/startup/app-gate'
 import './styles/globals.css'
 
 registerBuiltInRenderers()
@@ -81,7 +82,9 @@ async function bootstrap() {
     <StrictMode>
       <I18nProvider>
         <QueryClientProvider client={queryClient}>
-          <RouterProvider router={router} />
+          <AppGate>
+            <RouterProvider router={router} />
+          </AppGate>
         </QueryClientProvider>
       </I18nProvider>
     </StrictMode>,

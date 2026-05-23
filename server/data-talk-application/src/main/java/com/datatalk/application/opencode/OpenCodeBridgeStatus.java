@@ -15,7 +15,7 @@ public class OpenCodeBridgeStatus {
 
     public OpenCodeBridgeStatus(Clock clock) {
         this.clock = clock;
-        this.snapshot = new AtomicReference<>(new Snapshot("ok", now(), "OpenCode bridge ready", null));
+        this.snapshot = new AtomicReference<>(new Snapshot("starting", now(), "OpenCode bridge starting", null));
     }
 
     public String bridgeNonce() {
@@ -28,6 +28,10 @@ public class OpenCodeBridgeStatus {
 
     public Snapshot snapshot() {
         return snapshot.get();
+    }
+
+    public void markStarting(String message) {
+        snapshot.set(new Snapshot("starting", now(), message, null));
     }
 
     public void markOk(String message) {

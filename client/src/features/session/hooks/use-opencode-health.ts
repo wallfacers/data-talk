@@ -9,6 +9,9 @@ export function useOpencodeHealth() {
     queryFn: getHealth,
     staleTime: 30_000,
     retry: 1,
-    refetchInterval: 30_000,
+    // Poll fast while the bridge is still coming up so the "AI engine starting"
+    // banner clears promptly once it reports ready; back off once settled.
+    refetchInterval: (query) =>
+      query.state.data?.status === 'ok' ? 30_000 : 2_000,
   })
 }

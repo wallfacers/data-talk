@@ -13,7 +13,7 @@ import { useUISettingsStore } from '@/stores/ui-settings-store'
 import { ChatHeader } from './chat-header'
 import { useAutoScroll } from '@/hooks/use-auto-scroll'
 import { useI18n } from '@/i18n/use-i18n'
-import { useOpencodeHealth } from './hooks/use-opencode-health'
+import { OpencodeStatusBanner } from './opencode-status-banner'
 
 const DURATION = 240
 const EASE = 'cubic-bezier(0.32, 0.72, 0.24, 1)'
@@ -39,7 +39,6 @@ function loadSavedRatio(): number {
 
 export function SplitView() {
   const { t } = useI18n()
-  const { data: health } = useOpencodeHealth()
   const sid = useSessionStore((s) => s.activeSessionId)
   const open = useStageStore((s) => s.open)
   const maximized = useStageStore((s) => s.maximized)
@@ -110,22 +109,7 @@ export function SplitView() {
     transition: stageTransition,
     willChange: 'transform, width',
   }
-  const degradedReason = health?.reason ?? health?.message ?? ''
   const scrollToBottomLabel = t('chat.scrollToBottom')
-  const degradedNotice = health?.status === 'degraded' ? (
-    <div
-      data-opencode-health="degraded"
-      className="mx-auto mb-4 w-full max-w-3xl rounded border border-amber-500/40 bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/20 dark:text-amber-300"
-    >
-      <div className="font-medium">{t('session.opencodeDegradedTitle')}</div>
-      <p className="mt-1">{t('session.opencodeDegradedBody')}</p>
-      {degradedReason ? (
-        <p className="mt-1 text-xs text-amber-700/80 dark:text-amber-200/80">
-          {t('session.opencodeDegradedReason', { reason: degradedReason })}
-        </p>
-      ) : null}
-    </div>
-  ) : null
 
   return (
     <div ref={rootRef} className="relative h-full overflow-hidden">
@@ -166,7 +150,7 @@ export function SplitView() {
                 style={{ scrollbarGutter: 'stable' }}
               >
                 <div className="mx-auto w-full min-w-0 max-w-3xl">
-                  {degradedNotice}
+                  <OpencodeStatusBanner />
                   <TurnListErrorBoundary>
                     <TurnList sessionId={sid} />
                   </TurnListErrorBoundary>
@@ -220,7 +204,7 @@ export function SplitView() {
           <div className="flex h-full flex-col">
             <ChatHeader />
             <div className="flex flex-1 flex-col items-center justify-center overflow-x-hidden overflow-y-auto px-2" style={{ scrollbarGutter: 'stable' }}>
-              {degradedNotice}
+              <OpencodeStatusBanner />
               <div className="flex flex-col items-center gap-3 text-center">
                 <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
                   <DatabaseIcon className="size-5" />

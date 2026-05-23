@@ -179,18 +179,27 @@ pub fn run() {
         .manage(RunningPids(Mutex::new(HashMap::new())))
         .manage(backend::BackendProcess(Mutex::new(None)))
         .manage(backend::BackendPort(Mutex::new(0)))
+        .manage(backend::BackendStatusState(Mutex::new(
+            backend::BackendStatus::Starting,
+        )))
         .invoke_handler(tauri::generate_handler![
             greet,
             detect_script_env,
             run_script,
             stop_script,
-            backend::get_backend_url
+            backend::get_backend_url,
+            backend::get_backend_status,
+            backend::restart_backend
         ])
         .setup(|app| {
             // Dev runs the backend separately; just reveal the window.
             // Release manages the bundled sidecar and reveals once it is healthy.
             #[cfg(debug_assertions)]
             {
+                // Dev backend runs separately and is assumed up; mark Ready so
+                // the frontend welcome screen doesn't block on it.
+                *app.state::<backend::BackendStatusState>().0.lock().unwrap() =
+                    backend::BackendStatus::Ready;
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.show();
                 }

@@ -9,7 +9,7 @@ use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 /// Holds the spawned backend child so it can be terminated on exit.
 /// `None` means we reused an already-running backend (dev / external).
@@ -17,6 +17,34 @@ pub struct BackendProcess(pub Mutex<Option<Child>>);
 
 /// The port the backend is listening on. Set by `ensure_started`.
 pub struct BackendPort(pub Mutex<u16>);
+
+/// Lifecycle status of the bundled backend, surfaced to the frontend.
+///
+/// Serializes with a `state` tag so the frontend gets a discriminated union:
+///   `{"state":"starting"}` / `{"state":"ready"}` /
+///   `{"state":"failed","message":"...","log_path":"..."}`
+#[derive(Clone, serde::Serialize)]
+#[serde(tag = "state", rename_all = "lowercase")]
+pub enum BackendStatus {
+    Starting,
+    Ready,
+    Failed { message: String, log_path: String },
+}
+
+/// Managed wrapper around the current backend status.
+pub struct BackendStatusState(pub Mutex<BackendStatus>);
+
+/// Event name pushed to the frontend whenever the backend status changes.
+const STATUS_EVENT: &str = "backend://status";
+
+/// Store the new status into managed state and emit it to the frontend.
+fn set_status(app: &AppHandle, status: BackendStatus) {
+    {
+        let state = app.state::<BackendStatusState>();
+        *state.0.lock().unwrap() = status.clone();
+    }
+    let _ = app.emit(STATUS_EVENT, status);
+}
 
 const HEALTH_HOST: &str = "127.0.0.1";
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(90);
@@ -51,6 +79,7 @@ fn health_ok(port: u16) -> bool {
 }
 
 fn ensure_started(app: &AppHandle) -> Result<(), String> {
+    set_status(app, BackendStatus::Starting);
     let port = find_free_port();
 
     // Store port so the frontend can read it via get_backend_url
@@ -63,6 +92,7 @@ fn ensure_started(app: &AppHandle) -> Result<(), String> {
     // for a freshly-allocated port, but cheap to verify).
     if health_ok(port) {
         log::info!("Backend already healthy on {HEALTH_HOST}:{port}, reusing.");
+        set_status(app, BackendStatus::Ready);
         return Ok(());
     }
 
@@ -119,8 +149,14 @@ fn ensure_started(app: &AppHandle) -> Result<(), String> {
     let stderr_file = stdout_file.try_clone().map_err(|e| format!("Failed to clone log file: {e}"))?;
 
     log::info!("Spawning backend: {java:?} -jar {jar:?} --server.port={port} (cwd {work_dir:?}, log {log_path:?})");
+    // AppCDS: share a class-data archive across launches for faster startup.
+    // AutoCreateSharedArchive regenerates the archive automatically when it is
+    // missing, stale, or incompatible — graceful fallback, no existence check.
+    let jsa = backend_dir.join("app.jsa");
     let mut command = Command::new(&java);
     command
+        .arg("-XX:+AutoCreateSharedArchive")
+        .arg(format!("-XX:SharedArchiveFile={}", jsa.display()))
         .arg("-jar")
         .arg(&jar)
         .arg(format!("--server.port={}", port))
@@ -151,6 +187,7 @@ fn ensure_started(app: &AppHandle) -> Result<(), String> {
     let deadline = Instant::now() + STARTUP_TIMEOUT;
     while Instant::now() < deadline {
         if health_ok(port) {
+            set_status(app, BackendStatus::Ready);
             return Ok(());
         }
         // Check if the backend process has already exited (crashed).
@@ -161,11 +198,19 @@ fn ensure_started(app: &AppHandle) -> Result<(), String> {
                 match child.try_wait() {
                     Ok(Some(status)) => {
                         let code = status.code().map_or("N/A".to_string(), |c| c.to_string());
-                        return Err(format!(
+                        let message = format!(
                             "Backend process (pid {pid}) exited prematurely with code {code}. \
                              Check log at {}",
                             log_path.display()
-                        ));
+                        );
+                        set_status(
+                            app,
+                            BackendStatus::Failed {
+                                message: message.clone(),
+                                log_path: log_path.display().to_string(),
+                            },
+                        );
+                        return Err(message);
                     }
                     Ok(None) => {} // still running
                     Err(e) => {
@@ -176,37 +221,64 @@ fn ensure_started(app: &AppHandle) -> Result<(), String> {
         }
         std::thread::sleep(Duration::from_millis(500));
     }
-    Err(format!(
+    let message = format!(
         "Backend did not become healthy within {}s (pid {pid}). \
          Check log at {}",
         STARTUP_TIMEOUT.as_secs(),
         log_path.display()
-    ))
+    );
+    set_status(
+        app,
+        BackendStatus::Failed {
+            message: message.clone(),
+            log_path: log_path.display().to_string(),
+        },
+    );
+    Err(message)
 }
 
-/// Start the backend on a background thread, then reveal the main window.
-/// Keeps the Tauri setup hook (main thread) non-blocking.
-pub fn start_async(app: AppHandle) {
+/// Run startup on a background thread, then reveal the main window.
+/// Keeps the Tauri setup hook (main thread) non-blocking. Failure is surfaced
+/// purely via the `Failed` status + `backend://status` event (set inside
+/// `ensure_started`) — no blocking dialog.
+fn spawn_startup(app: AppHandle) {
     std::thread::spawn(move || {
         match ensure_started(&app) {
             Ok(()) => log::info!("Backend ready."),
-            Err(e) => {
-                log::error!("Backend startup failed: {e}");
-                use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
-                app.dialog()
-                    .message(format!(
-                        "后端服务启动失败：{e}\n部分功能将不可用。"
-                    ))
-                    .kind(MessageDialogKind::Error)
-                    .title("DataTalk")
-                    .blocking_show();
-            }
+            Err(e) => log::error!("Backend startup failed: {e}"),
         }
         if let Some(window) = app.get_webview_window("main") {
             let _ = window.show();
             let _ = window.set_focus();
         }
     });
+}
+
+/// Start the backend on a background thread (initial launch).
+pub fn start_async(app: AppHandle) {
+    spawn_startup(app);
+}
+
+/// Tauri command: returns the current backend status (race-safe pull, so the
+/// frontend recovers even if it missed the `backend://status` event).
+#[tauri::command]
+pub fn get_backend_status(app: AppHandle) -> BackendStatus {
+    app.state::<BackendStatusState>().0.lock().unwrap().clone()
+}
+
+/// Tauri command: re-attempt startup. No-op unless the current status is
+/// `Failed`. Resets status to `Starting` and reuses the standard startup path.
+#[tauri::command]
+pub fn restart_backend(app: AppHandle) {
+    {
+        let state = app.state::<BackendStatusState>();
+        let guard = state.0.lock().unwrap();
+        if !matches!(*guard, BackendStatus::Failed { .. }) {
+            return;
+        }
+    }
+    set_status(&app, BackendStatus::Starting);
+    spawn_startup(app);
 }
 
 /// Terminate the backend we spawned. Sends a graceful signal first so the backend's
