@@ -26,7 +26,11 @@ public class UndoLogCleanupScheduler {
         this.eventPublisher = eventPublisher;
     }
 
-    @Scheduled(fixedDelay = 86_400_000)
+    // initialDelay skips the first run during the startup window when the
+    // datatalk-sqlite pool is being lazily initialized and the undo_log table
+    // may not yet exist (Flyway migration runs at ApplicationReadyEvent).
+    // See openspec/changes/backend-startup-fast-path/design.md.
+    @Scheduled(fixedDelay = 86_400_000, initialDelay = 60_000)
     public void cleanup() {
         long now = System.currentTimeMillis();
         List<String> expiredIds = undoLogRepo.findExpiredActive(now);
