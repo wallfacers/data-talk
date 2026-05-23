@@ -79,6 +79,11 @@ fn health_ok(port: u16) -> bool {
 }
 
 fn ensure_started(app: &AppHandle) -> Result<(), String> {
+    // Wallclock baseline for cold-start observability. Captured at entry so it
+    // includes find_free_port + jar-existence checks. See
+    // openspec/changes/backend-startup-fast-path/specs/.../spec.md
+    // "Startup wallclock observability".
+    let t0 = Instant::now();
     set_status(app, BackendStatus::Starting);
     let port = find_free_port();
 
@@ -92,6 +97,7 @@ fn ensure_started(app: &AppHandle) -> Result<(), String> {
     // for a freshly-allocated port, but cheap to verify).
     if health_ok(port) {
         log::info!("Backend already healthy on {HEALTH_HOST}:{port}, reusing.");
+        log::info!("Backend ready in {}ms", t0.elapsed().as_millis());
         set_status(app, BackendStatus::Ready);
         return Ok(());
     }
@@ -157,6 +163,16 @@ fn ensure_started(app: &AppHandle) -> Result<(), String> {
     command
         .arg("-XX:+AutoCreateSharedArchive")
         .arg(format!("-XX:SharedArchiveFile={}", jsa.display()))
+        // Spring AOT: activates the BeanFactoryInitializer generated at build
+        // time by spring-boot-maven-plugin process-aot, eliminating runtime
+        // BeanDefinition reflection. See
+        // openspec/changes/backend-startup-fast-path/design.md D1.
+        .arg("-Dspring.aot.enabled=true")
+        // Desktop sidecar doesn't need JMX endpoints — skips MBean registration.
+        .arg("-Dspring.jmx.enabled=false")
+        // Skip Spring's background validator/converter preinit; the CPU it
+        // would consume during startup is better spent on the main thread.
+        .arg("-Dspring.backgroundpreinitializer.ignore=true")
         .arg("-jar")
         .arg(&jar)
         .arg(format!("--server.port={}", port))
@@ -187,6 +203,7 @@ fn ensure_started(app: &AppHandle) -> Result<(), String> {
     let deadline = Instant::now() + STARTUP_TIMEOUT;
     while Instant::now() < deadline {
         if health_ok(port) {
+            log::info!("Backend ready in {}ms", t0.elapsed().as_millis());
             set_status(app, BackendStatus::Ready);
             return Ok(());
         }

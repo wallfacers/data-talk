@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "data-talk",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "identifier": "com.datatalk.app",
   "build": {
     "devUrl": "http://localhost:1420",

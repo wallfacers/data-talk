@@ -1,9 +1,10 @@
 package com.datatalk.adapter.rest;
 
 import com.datatalk.application.importexport.DataExportService;
-import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -22,6 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/api/exports")
@@ -36,9 +38,20 @@ public class DataExportController {
         this.exportService = exportService;
     }
 
-    @PostConstruct
-    void init() {
-        exportService.cleanupOldExports();
+    /**
+     * Housekeeping deferred to ApplicationReady so the main initialization
+     * thread is not blocked on a disk scan.  Failures are logged but do not
+     * propagate — they must never affect `/api/health` readiness signaling.
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    void scheduleCleanupAfterReady() {
+        CompletableFuture.runAsync(() -> {
+            try {
+                exportService.cleanupOldExports();
+            } catch (Throwable t) {
+                log.warn("Background export cleanup failed (non-fatal)", t);
+            }
+        });
     }
 
     @GetMapping("/{exportId}/download")

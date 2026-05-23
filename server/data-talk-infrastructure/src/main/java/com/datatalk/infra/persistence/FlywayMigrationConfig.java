@@ -7,8 +7,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.context.event.EventListener;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -40,6 +45,7 @@ public class FlywayMigrationConfig {
     private static final Logger log = LoggerFactory.getLogger(FlywayMigrationConfig.class);
     private static final Pattern VERSION_PATTERN = Pattern.compile("^V(\\d+).*");
 
+    @Lazy
     @Bean("datatalkDataSource")
     public DataSource datatalkDataSource(
         @Value("${datatalk.persistence.sqlite-path:./data/datatalk.db}") String path
@@ -54,11 +60,33 @@ public class FlywayMigrationConfig {
         return new HikariDataSource(cfg);
     }
 
+    @Lazy
     @Bean
-    public JdbcTemplate datatalkJdbc(@Qualifier("datatalkDataSource") DataSource datatalkDataSource) throws Exception {
-        JdbcTemplate jdbc = new JdbcTemplate(datatalkDataSource);
-        applyMigrations(jdbc);
-        return jdbc;
+    public JdbcTemplate datatalkJdbc(@Lazy @Qualifier("datatalkDataSource") DataSource datatalkDataSource) {
+        // Migration deferred to applyMigrationsAfterReady() to keep the SQLite
+        // pool's first connect (which can take ~8s on a fat jar with 30+ JDBC
+        // drivers) off the main startup path.  See
+        // openspec/changes/backend-startup-fast-path/design.md.
+        return new JdbcTemplate(datatalkDataSource);
+    }
+
+    /**
+     * Run schema migrations after Spring is fully ready and Tomcat is already
+     * accepting requests.  This keeps the "Started in X.X seconds" milestone
+     * fast (drives the Tauri welcome→main-page transition) while still
+     * guaranteeing migrations complete before any persistence-using feature is
+     * exercised by the user.  Subsequent JDBC operations from controllers
+     * benefit from the now-warm pool.
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    @Order(Ordered.HIGHEST_PRECEDENCE)
+    public void applyMigrationsAfterReady(ApplicationReadyEvent event) {
+        try {
+            JdbcTemplate jdbc = event.getApplicationContext().getBean("datatalkJdbc", JdbcTemplate.class);
+            applyMigrations(jdbc);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to apply post-ready migrations", e);
+        }
     }
 
     private void applyMigrations(JdbcTemplate jdbc) throws Exception {

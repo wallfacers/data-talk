@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Primary;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Properties;
 
 @Configuration
 public class DataSourcesConfig {
@@ -65,9 +66,15 @@ public class DataSourcesConfig {
             Path h2File = dataDir.resolve("datatalk-db");
             url = "jdbc:h2:file:" + h2File.toAbsolutePath() + ";DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL";
         }
+        // Use dataSourceClassName instead of jdbcUrl so HikariCP creates the
+        // H2 JdbcDataSource directly, bypassing DriverManager.getConnection()
+        // which would otherwise trigger SPI scan of all 30+ bundled JDBC
+        // drivers (Trino/GaussDB/SQLServer/etc.) and cost ~10s at startup.
         HikariConfig config = new HikariConfig();
-        config.setJdbcUrl(url);
-        config.setDriverClassName(demoDataSourceProperties.getDriverClassName());
+        config.setDataSourceClassName("org.h2.jdbcx.JdbcDataSource");
+        Properties props = new Properties();
+        props.setProperty("URL", url);
+        config.setDataSourceProperties(props);
         config.setUsername(demoDataSourceProperties.determineUsername());
         config.setPassword(demoDataSourceProperties.determinePassword());
         return new HikariDataSource(config);
@@ -81,6 +88,11 @@ public class DataSourcesConfig {
 
     @Bean(name = "sqliteDataSource")
     public HikariDataSource sqliteDataSource(DataSourceProperties sqliteDataSourceProperties) {
+        // Stays on URL-based init — SQLiteDataSource doesn't auto-create the
+        // parent directory, and the URL path is relative.  Trying to bypass
+        // DriverManager here doesn't help anyway: SQLite's static initializer
+        // is what triggers DriverManager init, regardless of how we open the
+        // connection.  See openspec/changes/backend-startup-fast-path.
         return sqliteDataSourceProperties.initializeDataSourceBuilder()
                 .type(HikariDataSource.class)
                 .build();
