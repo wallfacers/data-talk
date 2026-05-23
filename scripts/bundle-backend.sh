@@ -63,6 +63,33 @@ echo "==> Building full-module runtime with jlink"
   --no-man-pages \
   --output "$BACKEND_DIR/runtime"
 
+# ── AppCDS archive (training run) ────────────────────────────────────────────
+# Generate a class-data-sharing archive (app.jsa) using the just-built runtime +
+# jar so cold start is faster. The archive is platform-specific (tied to this
+# JRE), so each platform's bundle step regenerates it. backend.rs launches with
+# -XX:+AutoCreateSharedArchive, so a missing/stale archive self-heals at runtime
+# — this step is therefore best-effort and must never fail the bundle.
+#
+# Regeneration: this runs every bundle, immediately after the jar is copied and
+# the runtime is (re)built, so the archive can never go stale relative to them.
+RUNTIME_JAVA="$BACKEND_DIR/runtime/bin/java"
+[ -x "$RUNTIME_JAVA" ] || RUNTIME_JAVA="$BACKEND_DIR/runtime/bin/java.exe"
+APP_JSA="$BACKEND_DIR/app.jsa"
+echo "==> Generating AppCDS archive (training run)"
+rm -f "$APP_JSA"
+CDS_CWD="$(mktemp -d)"
+if ( cd "$CDS_CWD" && "$RUNTIME_JAVA" \
+      -XX:ArchiveClassesAtExit="$APP_JSA" \
+      -Dspring.context.exit=onRefresh \
+      -jar "$BACKEND_DIR/app.jar" \
+      --server.port=0 >/dev/null 2>&1 ) && [ -f "$APP_JSA" ]; then
+  echo "    app.jsa  : $APP_JSA ($(du -h "$APP_JSA" | cut -f1))"
+else
+  echo "    WARN: AppCDS archive generation failed; continuing (runtime self-heals via AutoCreateSharedArchive)" >&2
+  rm -f "$APP_JSA"
+fi
+rm -rf "$CDS_CWD"
+
 # ── Bundle the platform OpenCode binary ──────────────────────────────────────
 # Embeds opencode into backend/opencode/ so the packaged app never downloads it on
 # first launch (backend reads DATATALK_OPENCODE_SERVE_BINARY_PATH set by backend.rs).

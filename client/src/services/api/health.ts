@@ -1,7 +1,7 @@
 import { http } from '@/services/http'
 
 export type HealthStatus = {
-  status: 'ok' | 'degraded'
+  status: 'ok' | 'degraded' | 'starting'
   timestamp: string
   message: string
   reason: string | null
