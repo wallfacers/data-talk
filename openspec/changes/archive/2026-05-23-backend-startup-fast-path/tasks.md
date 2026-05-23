@@ -61,8 +61,8 @@
 
 ## 8. 收尾
 
-- [ ] 8.1 提交到 `feat/backend-startup-fast-path` 分支（已建好），按阶段 commit 便于回滚
-- [ ] 8.2 archive 待人工触发 `/opsx:archive backend-startup-fast-path`
+- [x] 8.1 已提交 4 个 commit 到 `feat/backend-startup-fast-path`（按阶段拆分：openspec / build / runtime perf / desktop Rust）
+- [x] 8.2 由 `/opsx:archive backend-startup-fast-path` 触发归档
 
 ## Verification Gates Summary
 
