@@ -56,11 +56,16 @@ mkdir -p "$BACKEND_DIR"
 cp "$JAR_SRC" "$BACKEND_DIR/app.jar"
 
 echo "==> Building full-module runtime with jlink"
+# --generate-cds-archive bakes a static CDS archive (classes.jsa) into the
+# runtime image.  Without it, -XX:ArchiveClassesAtExit (dynamic CDS, used to
+# train app.jsa below) silently fails because dynamic CDS requires a static
+# CDS base — and bare jlink runtimes don't include one by default.
 "$JLINK" \
   --add-modules ALL-MODULE-PATH \
   --strip-debug \
   --no-header-files \
   --no-man-pages \
+  --generate-cds-archive \
   --output "$BACKEND_DIR/runtime"
 
 # ── AppCDS archive (training run) ────────────────────────────────────────────
@@ -75,11 +80,15 @@ echo "==> Building full-module runtime with jlink"
 RUNTIME_JAVA="$BACKEND_DIR/runtime/bin/java"
 [ -x "$RUNTIME_JAVA" ] || RUNTIME_JAVA="$BACKEND_DIR/runtime/bin/java.exe"
 APP_JSA="$BACKEND_DIR/app.jsa"
-echo "==> Generating AppCDS archive (training run)"
+echo "==> Generating AppCDS archive (training run, AOT enabled)"
 rm -f "$APP_JSA"
 CDS_CWD="$(mktemp -d)"
+# Boot 3.5 fast-startup combo: train with -Dspring.aot.enabled=true so the
+# archive captures the AOT-generated BeanFactoryInitializer + reflection-free
+# bean classes. See openspec/changes/backend-startup-fast-path/design.md D2.
 if ( cd "$CDS_CWD" && "$RUNTIME_JAVA" \
       -XX:ArchiveClassesAtExit="$APP_JSA" \
+      -Dspring.aot.enabled=true \
       -Dspring.context.exit=onRefresh \
       -jar "$BACKEND_DIR/app.jar" \
       --server.port=0 >/dev/null 2>&1 ) && [ -f "$APP_JSA" ]; then
