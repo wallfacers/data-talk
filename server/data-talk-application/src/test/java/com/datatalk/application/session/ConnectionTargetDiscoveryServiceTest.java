@@ -221,8 +221,8 @@ class ConnectionTargetDiscoveryServiceTest {
 
             // Oracle: configured database (orclpdb) is in databaseNames
             assertThat(result.databaseNames()).containsExactly("orclpdb");
-            // System schemas (SYS, SYSTEM, MDSYS, DBSNMP, XDB, ORDSYS) are filtered out
-            assertThat(result.schemaNames()).containsExactlyInAnyOrder("HR", "SCOTT");
+            // All schemas are returned including system schemas
+            assertThat(result.schemaNames()).containsExactlyInAnyOrder("HR", "SYS", "SYSTEM", "SCOTT", "MDSYS", "DBSNMP", "XDB", "ORDSYS");
         } finally {
             DriverManager.deregisterDriver(driver);
         }
@@ -251,8 +251,8 @@ class ConnectionTargetDiscoveryServiceTest {
 
             var result = service.discover("sqlserver-1");
 
-            // SQL Server: sys schema is filtered out
-            assertThat(result.schemaNames()).containsExactlyInAnyOrder("dbo", "sales", "guest");
+            // SQL Server: all schemas returned including sys
+            assertThat(result.schemaNames()).containsExactlyInAnyOrder("dbo", "sales", "sys", "guest");
         } finally {
             DriverManager.deregisterDriver(driver);
         }
@@ -315,8 +315,8 @@ class ConnectionTargetDiscoveryServiceTest {
 
             var result = service.discover("clickhouse-2");
 
-            // 'system' schema is filtered, but 'default' and 'my_schema' are kept
-            assertThat(result.schemaNames()).containsExactlyInAnyOrder("default", "my_schema");
+            // All schemas returned including 'system'
+            assertThat(result.schemaNames()).containsExactlyInAnyOrder("default", "system", "my_schema");
         } finally {
             DriverManager.deregisterDriver(driver);
         }

@@ -186,7 +186,7 @@ public class ConnectionTargetDiscoveryService {
                 try (var schemas = meta.getSchemas()) {
                     while (schemas.next()) {
                         String name = schemas.getString("TABLE_SCHEM");
-                        if (isUserSchema(name)) schemaNames.add(name);
+                        if (name != null && !name.isBlank()) schemaNames.add(name);
                     }
                 } catch (Exception ignored) {
                     // Some drivers do not expose schemas.
@@ -222,22 +222,6 @@ public class ConnectionTargetDiscoveryService {
         return databaseName;
     }
 
-    private boolean isUserSchema(String schema) {
-        if (schema == null || schema.isBlank()) return false;
-        String normalized = schema.toLowerCase(Locale.ROOT);
-        return !normalized.equals("information_schema")
-            && !normalized.equals("pg_catalog")
-            && !normalized.equals("sys")
-            && !normalized.equals("system_lobs")
-            // Oracle system schemas to exclude
-            && !ORACLE_SYSTEM_SCHEMAS.contains(normalized)
-            // Dameng system schemas to exclude
-            && !DAMENG_SYSTEM_SCHEMAS.contains(normalized)
-            // KingbaseES system schemas to exclude
-            && !KINGBASE_SYSTEM_SCHEMAS.contains(normalized)
-            // GaussDB system schemas to exclude
-            && !GAUSSDB_SYSTEM_SCHEMAS.contains(normalized);
-    }
 
     private boolean isClickHouseSystemDatabase(String name) {
         String normalized = name.toLowerCase(Locale.ROOT);
@@ -287,34 +271,6 @@ public class ConnectionTargetDiscoveryService {
         }
         return Set.of();
     }
-
-    private static final Set<String> ORACLE_SYSTEM_SCHEMAS = Set.of(
-        "sys", "system", "dbsnmp", "appqossys", "dbsfwuser",
-        "gsmadmin_internal", "lbacsys", "mdsys", "olapsys",
-        "orddata", "ordplugins", "outln", "wmsys", "xdb",
-        "xs$null", "ctxsys", "ordsys", "sdo", "dvsys",
-        "oevmsys", "audsys", "ojsvd_users", "remote_scheduler_agent",
-        "dip", "sysbackup", "sysdg", "syskm", "sysrac",
-        "spatial_csw_admin_usr", "spatial_wfs_admin_usr"
-    );
-
-    private static final Set<String> DAMENG_SYSTEM_SCHEMAS = Set.of(
-        "sys",         // system objects
-        "sysdba",      // DBA user
-        "sysauditor",  // audit
-        "syssso",      // security
-        "ctisys"       // full-text indexing
-    );
-
-    private static final Set<String> KINGBASE_SYSTEM_SCHEMAS = Set.of(
-        "pg_catalog", "information_schema", "pg_toast", "pg_temp",
-        "sys", "sys_catalog"
-    );
-
-    private static final Set<String> GAUSSDB_SYSTEM_SCHEMAS = Set.of(
-        "pg_catalog", "information_schema", "pg_toast", "pg_temp_1", "pg_toast_temp_1",
-        "db_scheduler", "db4ai", "pkg_service", "sqladvisor", "wdr_snapshot", "snapshot"
-    );
 
     public record DiscoveryResult(
         String connectionId,
